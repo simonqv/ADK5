@@ -1,34 +1,26 @@
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Role {
-    int role;
-    int[] possibleActors;
-    //ArrayList<Role> clashes;
-    boolean[] clashes;
-    boolean assignedToDiva;
-    boolean assigned;
-    int assignedTo;
+    int role;               // Name of role
+    int[] possibleActors;   // Actors that can play this role
+    boolean[] clashes;      // True if clash between roles in at least one scene
+    boolean assignedToDiva; // True if assigned to diva
+    boolean assigned;       // True if assigned
 
 
     public Role(int role, int[] actors, int n) {
         this.role = role;
         this.possibleActors = actors;
-        //this.clashes = new ArrayList<>();
         this.clashes = new boolean[n];
-        Arrays.fill(clashes, Boolean.FALSE);
+        Arrays.fill(clashes, Boolean.FALSE); // Initialize all to False
+
+        // No role is assigned to anyone in the beginning
         this.assignedToDiva = false;
         this.assigned = false;
-        this.assignedTo = 0;
     }
 
     public void addClash(Role r) {
         clashes[r.role - 1] = true;
-    }
-
-    public boolean checkClash(Role r) {
-        return clashes[r.role - 1];
     }
 
     public void setDiva() {
@@ -36,8 +28,13 @@ public class Role {
         assigned = true;
     }
 
+    /**
+     * Actor can play Role, if role is not assigned and Actor part of possibleActors array
+     * @param actor number of actor
+     * @return True if possible
+     */
     public boolean canPlay(int actor) {
-        if (!isAssigned()) {
+        if (isNotAssigned()) {
             for (int x : possibleActors) {
                 if (x == actor) return true;
             }
@@ -45,15 +42,12 @@ public class Role {
         return false;
     }
 
-    public boolean isAssigned() {
-        return assigned || assignedToDiva;
+    public boolean isNotAssigned() {
+        return !assigned && !assignedToDiva;
     }
 
     public void setAssigned(){
         assigned = true;
     }
 
-    public boolean isAssignedToDiva() {
-        return assignedToDiva;
-    }
 }

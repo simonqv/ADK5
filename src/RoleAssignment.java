@@ -1,76 +1,94 @@
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class RoleAssignment {
     private final int n;        // number of roles
     private final int s;        // number of scenes
     private final int k;        // number of actors
-    private ArrayList<Role> roles;      // possible actors for each role
+    private ArrayList<Role> roles;      // list of all roles
     private int[][] scenes;     // roles in scenes
     private final ArrayList<Integer> divaOneRoles = new ArrayList<>();
     private final ArrayList<Integer> divaTwoRoles = new ArrayList<>();
     private int superActor;
 
-    private int[][] assignedRoles;
-
     public RoleAssignment(Kattio io) {
-        n = io.getInt();
-        s = io.getInt();
-        k = io.getInt();
-        superActor = k + 1;
-        //roles  = readRow(n, io, true);
+        n = io.getInt();        // number of roles
+        s = io.getInt();        // number of scenes
+        k = io.getInt();        // number of actors
+        superActor = k + 1;     // superactor start value
 
-
-        read(n, s, io);
-        //Role role = new Role(readRow(n, io, true), readRow(s, io, false));
-
+        // read rest of input
+        read(io);
     }
 
-    private void read(int n, int s, Kattio io) {
+    /**
+     * Read everything but the three first lines
+     * @param io io stuff
+     */
+    private void read(Kattio io) {
+        // initialize list of all roles
         roles = new ArrayList<>();
+
         for (int i = 0; i < n; i++) {
-            int x = io.getInt();
-            int[] restOfRow = new int[x];
-            for (int j = 0; j < x; j++) {
-                int y = io.getInt();
-                restOfRow[j] = y;
-                if (y == 1) {
+            int rowLen = io.getInt();
+            int[] restOfRow = new int[rowLen];
+
+            for (int j = 0; j < rowLen; j++) {
+                int actor = io.getInt();
+                restOfRow[j] = actor;
+
+                // If actor number is 1 or 2 it's a diva
+                if (actor == 1) {
                     divaOneRoles.add(i + 1);
-                } else if (y == 2) {
+                } else if (actor == 2) {
                     divaTwoRoles.add(i + 1);
                 }
             }
+
+            // Create a role and add to list
             Role role = new Role(i + 1, restOfRow, n);
             roles.add(role);
         }
-        scenes = readRow(s, io, roles);
+
+        // Create int[][] of all scenes
+        readScenes(io, roles);
     }
 
+    /**
+     * Reads the rows of scenens and creates 2D array
+     * @param io io stuff
+     * @param roles list of all roles to save clashes between roles in scenes
+     */
+    private void readScenes(Kattio io, ArrayList<Role> roles) {
+        scenes = new int[s][];
 
-    private int[][] readRow(int a, Kattio io, ArrayList<Role> roles) {
-        int[][] res = new int[a][];
-        for (int i = 0; i < a; i++) {
-            int x = io.getInt();
-            int[] restOfRow = new int[x];
-            for (int j = 0; j < x; j++) {
+        // to read each scene
+        for (int i = 0; i < s; i++) {
+            int rowLen = io.getInt();
+            int[] restOfRow = new int[rowLen];
+
+            // read the rest of the row
+            for (int j = 0; j < rowLen; j++) {
                 int y = io.getInt();
                 restOfRow[j] = y;
             }
-            res[i] = restOfRow;
+            scenes[i] = restOfRow;
 
+            // for each role in the scene, add clash between roles
             for (int role : restOfRow) {
                 for (int roleInner : restOfRow) {
-                    //if (role != roleInner) {
                     roles.get(role - 1).addClash(roles.get(roleInner - 1));
-                    //}
                 }
             }
         }
-        return res;
     }
 
-    private boolean assignDivasHelper(int divaOne, int divaTwo) {
+    /**
+     * Checks if roles appears in the same scene
+     * @param divaOne role for diva one
+     * @param divaTwo role for diva two
+     * @return true if they do not appear in the same scene
+     */
+    private boolean divaSceneCheck(int divaOne, int divaTwo) {
         for (int[] scene : scenes) {
             boolean divaOneCheck = false;
             boolean divaTwoCheck = false;
@@ -89,11 +107,14 @@ public class RoleAssignment {
         return true;
     }
 
-
+    /**
+     * Finds possible assignemnt of diva one and two, so that they don't play against each other, always picks first possible match
+     * @return array of length 2, where fist element is diva one's role, and second element is diva two's role
+     */
     private int[] assignDivas() {
         for (Integer one : divaOneRoles) {
             for (Integer two : divaTwoRoles) {
-                boolean check = assignDivasHelper(one, two);
+                boolean check = divaSceneCheck(one, two);
                 if (check) {
                     return new int[]{one, two};
                 }
@@ -102,6 +123,10 @@ public class RoleAssignment {
         return new int[]{-1};
     }
 
+    /**
+     * Assign roles to actors
+     * @return 2D array where each inner array is contains actor followed by roles they play
+     */
     public int[][] assign() {
         // assign divas roles.
         int[] divaRoles = assignDivas();
@@ -111,36 +136,68 @@ public class RoleAssignment {
         int divaOneRole = divaRoles[0];
         int divaTwoRole = divaRoles[1];
 
-        roles.get(divaOneRole).setDiva();
-        roles.get(divaTwoRole).setDiva();
+        roles.get(divaOneRole - 1).setDiva();
+        roles.get(divaTwoRole - 1).setDiva();
 
-        // format [[name, role],]
+        // format [[actorNum, role, role, ...], ...]
         int[][] output = new int[k + n][];
 
+        // place divas in output
         output[0] = new int[]{1, divaOneRole};
         output[1] = new int[]{2, divaTwoRole};
 
+        // list of roles for one actor
         ArrayList<Integer> rolesToActor;
+
+        // start loop at 3, cuase diva 1 and 2 are done
         for (int actor = 3; actor < k + 1; actor++) {
-            rolesToActor = helper(actor);
-            int[] partOfOutput = rolesToActor.stream().mapToInt(i->i).toArray();
-            output[actor - 1] = partOfOutput;
+
+            rolesToActor = assignRolesToActor(actor);
+
+            // translate list to array and add to output
+            output[actor - 1] = rolesToActor.stream().mapToInt(i->i).toArray();
+        }
+
+        // if roles are unassigned, assign superactor to them
+        for (Role role : roles) {
+            int[] superRole = new int[2];
+            if (role.isNotAssigned()) {
+                superRole[0] = superActor;
+                superRole[1] = role.role;
+                output[superActor] = superRole;
+                superActor++;
+            }
         }
         return output;
     }
 
 
-
-    private ArrayList<Integer> helper(int actor) {
+    /**
+     * Checks which roles an actor can play and assigns those roles to the actor
+     * @param actor the actor to find roles for
+     * @return a list of roles with actor number first
+     */
+    private ArrayList<Integer> assignRolesToActor(int actor) {
         ArrayList<Integer> rolesToActor = new ArrayList<>();
         rolesToActor.add(actor);
+
+        // Checks every role, if true add the role and set role as assigned
         for (Role role : roles) {
-            System.out.println("acotor " + actor + " " + );
             if (role.canPlay(actor)) {
                 rolesToActor.add(role.role);
                 role.setAssigned();
+
+                // for each element in clashes, check if there is a clash and if actor can play the non-clash roles
                 for (int i = 0; i < role.clashes.length; i++) {
-                    if (!role.clashes[i]) {
+                    if (!role.clashes[i] && roles.get(i).canPlay(actor)) {
+
+                        // Update clashlist
+                        for (int j = 0; j < role.clashes.length; j++) {
+                            if (roles.get(i).clashes[j]) {
+                                role.clashes[j] = roles.get(i).clashes[j];
+                            }
+                        }
+
                         rolesToActor.add(roles.get(i).role);
                         roles.get(i).setAssigned();
                     }
@@ -148,16 +205,6 @@ public class RoleAssignment {
                 return rolesToActor;
             }
         }
-
-        for (Role role : roles) {
-            if (!role.isAssigned()) {
-                rolesToActor.set(0, superActor);
-                rolesToActor.add(role.role);
-                superActor++;
-                return rolesToActor;
-            }
-        }
-
-        return new ArrayList<Integer>();
+        return new ArrayList<>();
     }
 }
